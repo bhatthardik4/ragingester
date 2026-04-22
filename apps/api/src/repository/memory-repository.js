@@ -1,0 +1,104 @@
+import { randomUUID } from 'node:crypto';
+
+const store = {
+  cards: new Map(),
+  runs: new Map(),
+  collectedData: new Map()
+};
+
+function sortDescByDate(items, key) {
+  return [...items].sort((a, b) => new Date(b[key] || 0) - new Date(a[key] || 0));
+}
+
+export function createMemoryRepository() {
+  return {
+    async listCards(ownerId) {
+      return [...store.cards.values()].filter((c) => c.owner_id === ownerId);
+    },
+
+    async getCardById(cardId, ownerId) {
+      const card = store.cards.get(cardId);
+      if (!card || card.owner_id !== ownerId) return null;
+      return card;
+    },
+
+    async createCard(payload) {
+      const now = new Date().toISOString();
+      const card = {
+        id: randomUUID(),
+        created_at: now,
+        updated_at: now,
+        ...payload,
+        params: payload.params || {}
+      };
+      store.cards.set(card.id, card);
+      return card;
+    },
+
+    async updateCard(cardId, updates) {
+      const existing = store.cards.get(cardId);
+      if (!existing) return null;
+      const updated = {
+        ...existing,
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+      store.cards.set(cardId, updated);
+      return updated;
+    },
+
+    async deleteCard(cardId, ownerId) {
+      const card = store.cards.get(cardId);
+      if (!card || card.owner_id !== ownerId) return false;
+      store.cards.delete(cardId);
+      return true;
+    },
+
+    async listRuns(cardId, ownerId) {
+      const runs = [...store.runs.values()].filter((run) => run.card_id === cardId && run.owner_id === ownerId);
+      return sortDescByDate(runs, 'created_at');
+    },
+
+    async createRun(payload) {
+      const run = {
+        id: randomUUID(),
+        created_at: new Date().toISOString(),
+        ...payload
+      };
+      store.runs.set(run.id, run);
+      return run;
+    },
+
+    async updateRun(runId, updates) {
+      const existing = store.runs.get(runId);
+      if (!existing) return null;
+      const run = { ...existing, ...updates };
+      store.runs.set(runId, run);
+      return run;
+    },
+
+    async getRunById(runId, ownerId) {
+      const run = store.runs.get(runId);
+      if (!run || run.owner_id !== ownerId) return null;
+      return run;
+    },
+
+    async getActiveRunForCard(cardId) {
+      return [...store.runs.values()].find((run) => run.card_id === cardId && run.status === 'running') || null;
+    },
+
+    async listDueCards(atIso) {
+      const now = new Date(atIso || new Date().toISOString()).getTime();
+      return [...store.cards.values()].filter((card) => {
+        if (!card.active || !card.schedule_enabled || !card.next_run_at) return false;
+        return new Date(card.next_run_at).getTime() <= now;
+      });
+    },
+
+    async createCollectedData(payload) {
+      const row = { id: randomUUID(), created_at: new Date().toISOString(), ...payload };
+      store.collectedData.set(row.id, row);
+      return row;
+    }
+  };
+}

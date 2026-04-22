@@ -1,0 +1,20 @@
+{
+  "name": "ragingester",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Card-based data collection service with per-card cron scheduling",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @ragingester/api",
+    "dev:api": "npm run dev -w @ragingester/api",
+    "dev:web": "npm run dev -w @ragingester/web",
+    "test": "npm run test -ws --if-present",
+    "lint": "npm run lint -ws --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,21 @@
+import React from 'react';
+
+export function RunList({ runs, preview }) {
+  return (
+    <div className="panel">
+      <h2>Run History</h2>
+      {preview?.next_runs?.length > 0 && (
+        <div className="meta">Next scheduled runs: {preview.next_runs.join(', ')}</div>
+      )}
+      {runs.length === 0 && <div className="meta">No runs yet.</div>}
+      {runs.map((run) => (
+        <div key={run.id} className="card-item">
+          <div><strong>{run.status}</strong> ({run.trigger_mode})</div>
+          <div className="meta">started: {run.started_at || 'n/a'} | ended: {run.ended_at || 'n/a'}</div>
+          <div className="meta">attempts: {run.attempts || 0}</div>
+          {run.error && <div className="meta">error: {run.error}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
