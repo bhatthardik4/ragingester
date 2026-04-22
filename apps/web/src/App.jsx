@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api } from './api.js';
 import { CardForm } from './components/CardForm.jsx';
 import { CardList } from './components/CardList.jsx';
+import { CardFilters } from './components/CardFilters.jsx';
 import { RunList } from './components/RunList.jsx';
 
 export function App() {
@@ -10,8 +11,10 @@ export function App() {
   const [runs, setRuns] = useState([]);
   const [preview, setPreview] = useState(null);
   const [selectedCardId, setSelectedCardId] = useState('');
+  const [editingCard, setEditingCard] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [filters, setFilters] = useState({ jobType: 'all', jobName: '' });
 
   async function refreshCards() {
     const nextCards = await api.listCards(auth);
@@ -37,6 +40,21 @@ export function App() {
     try {
       await api.createCard(auth, payload);
       await refreshCards();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleUpdate(payload) {
+    if (!editingCard) return;
+    setLoading(true);
+    try {
+      await api.updateCard(auth, editingCard.id, payload);
+      setEditingCard(null);
+      await refreshCards();
+      if (selectedCardId === editingCard.id) {
+        await refreshRuns(editingCard.id);
+      }
     } finally {
       setLoading(false);
     }
@@ -79,6 +97,17 @@ export function App() {
     }
   }
 
+  const filteredCards = useMemo(() => {
+    const nameNeedle = filters.jobName.trim().toLowerCase();
+    return cards.filter((card) => {
+      const typeMatch = filters.jobType === 'all' || card.source_type === filters.jobType;
+      const jobName = String(card.params?.job_name || '').toLowerCase();
+      const sourceName = String(card.source_input || '').toLowerCase();
+      const nameMatch = !nameNeedle || jobName.includes(nameNeedle) || sourceName.includes(nameNeedle);
+      return typeMatch && nameMatch;
+    });
+  }, [cards, filters]);
+
   return (
     <div className="container">
       <div className="panel">
@@ -98,7 +127,24 @@ export function App() {
       </div>
 
       <CardForm onSubmit={handleCreate} loading={loading} />
-      <CardList cards={cards} onRun={handleRun} onDelete={handleDelete} onSelect={handleSelect} selectedId={selectedCardId} />
+      {editingCard && (
+        <CardForm
+          mode="edit"
+          initialCard={editingCard}
+          onSubmit={handleUpdate}
+          onCancel={() => setEditingCard(null)}
+          loading={loading}
+        />
+      )}
+      <CardFilters filters={filters} onChange={setFilters} />
+      <CardList
+        cards={filteredCards}
+        onRun={handleRun}
+        onDelete={handleDelete}
+        onSelect={handleSelect}
+        onEdit={setEditingCard}
+        selectedId={selectedCardId}
+      />
       <RunList runs={runs} preview={preview} />
     </div>
   );

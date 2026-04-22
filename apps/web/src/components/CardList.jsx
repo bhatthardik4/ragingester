@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function CardList({ cards, onRun, onDelete, onSelect, selectedId }) {
+export function CardList({ cards, onRun, onDelete, onSelect, onEdit, selectedId }) {
   return (
     <div className="panel">
       <h2>Cards</h2>
@@ -8,6 +8,7 @@ export function CardList({ cards, onRun, onDelete, onSelect, selectedId }) {
       {cards.map((card) => (
         <div key={card.id} className="card-item">
           <strong>{card.source_type}</strong>
+          <div><strong>job:</strong> {card.params?.job_name || 'unnamed'}</div>
           <div>{card.source_input}</div>
           <div className="meta">
             schedule: {card.schedule_enabled ? `${card.cron_expression} (${card.timezone})` : 'disabled'}
@@ -16,6 +17,9 @@ export function CardList({ cards, onRun, onDelete, onSelect, selectedId }) {
           <div className="meta">last run: {card.last_run_at || 'n/a'}</div>
           <div className="row">
             <button type="button" onClick={() => onRun(card.id)}>Run now</button>
+            <button className="secondary" type="button" onClick={() => onEdit(card)}>
+              Edit
+            </button>
             <button className="secondary" type="button" onClick={() => onSelect(card.id)}>
               {selectedId === card.id ? 'Selected' : 'View runs'}
             </button>

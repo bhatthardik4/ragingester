@@ -1,7 +1,7 @@
-import cronParser from 'cron-parser';
+import { CronExpressionParser } from 'cron-parser';
 
 export function computeNextRuns(cronExpression, timezone, count = 5, fromDate = new Date()) {
-  const interval = cronParser.parse(cronExpression, {
+  const interval = CronExpressionParser.parse(cronExpression, {
     currentDate: fromDate,
     tz: timezone
   });

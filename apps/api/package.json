@@ -5,9 +5,9 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
-    "worker": "node src/scheduler/worker.js",
+    "dev": "node --env-file=.env --watch src/server.js",
+    "start": "node --env-file=.env src/server.js",
+    "worker": "node --env-file=.env src/scheduler/worker.js",
     "test": "node --test"
   },
   "dependencies": {
@@ -16,6 +16,7 @@
     "cors": "^2.8.5",
     "cron-parser": "^5.2.0",
     "express": "^4.21.2",
+    "pg": "^8.16.3",
     "zod": "^3.24.1"
   }
 }

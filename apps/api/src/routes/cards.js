@@ -18,6 +18,16 @@ export function createCardsRouter() {
     }
   });
 
+  router.get('/:id', async (req, res, next) => {
+    try {
+      const card = await repository.getCardById(req.params.id, req.user.id);
+      if (!card) return res.status(404).json({ error: 'card not found' });
+      res.json(card);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/', async (req, res, next) => {
     try {
       const payload = validateCardPayload(req.body, config.defaultTimezone);
@@ -35,6 +45,7 @@ export function createCardsRouter() {
 
       const payload = validateCardPayload({ ...existing, ...req.body }, config.defaultTimezone);
       const updated = await repository.updateCard(req.params.id, payload);
+      if (!updated) return res.status(404).json({ error: 'card not found' });
       res.json(updated);
     } catch (error) {
       next(error);

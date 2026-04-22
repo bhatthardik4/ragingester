@@ -1,6 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-export function createSupabaseRepository({ supabaseUrl, serviceRoleKey }) {
+const defaultTables = {
+  cards: 'cards',
+  collectionRuns: 'collection_runs',
+  collectedData: 'collected_data'
+};
+
+export function createSupabaseRepository({ supabaseUrl, serviceRoleKey, tables = {} }) {
+  const table = { ...defaultTables, ...tables };
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false }
   });
@@ -12,50 +19,59 @@ export function createSupabaseRepository({ supabaseUrl, serviceRoleKey }) {
 
   return {
     async listCards(ownerId) {
-      return unwrap(await supabase.from('cards').select('*').eq('owner_id', ownerId).order('created_at', { ascending: false }));
+      return unwrap(await supabase.from(table.cards).select('*').eq('owner_id', ownerId).order('created_at', { ascending: false }));
     },
 
     async getCardById(cardId, ownerId) {
-      return unwrap(await supabase.from('cards').select('*').eq('id', cardId).eq('owner_id', ownerId).maybeSingle());
+      return unwrap(await supabase.from(table.cards).select('*').eq('id', cardId).eq('owner_id', ownerId).maybeSingle());
     },
 
     async createCard(payload) {
-      return unwrap(await supabase.from('cards').insert(payload).select('*').single());
+      return unwrap(await supabase.from(table.cards).insert(payload).select('*').single());
     },
 
     async updateCard(cardId, updates) {
-      return unwrap(await supabase.from('cards').update(updates).eq('id', cardId).select('*').maybeSingle());
+      return unwrap(await supabase.from(table.cards).update(updates).eq('id', cardId).select('*').maybeSingle());
     },
 
     async deleteCard(cardId, ownerId) {
-      const data = unwrap(await supabase.from('cards').delete().eq('id', cardId).eq('owner_id', ownerId).select('id'));
+      const data = unwrap(await supabase.from(table.cards).delete().eq('id', cardId).eq('owner_id', ownerId).select('id'));
       return data.length > 0;
     },
 
     async listRuns(cardId, ownerId) {
-      return unwrap(await supabase.from('collection_runs').select('*').eq('card_id', cardId).eq('owner_id', ownerId).order('created_at', { ascending: false }));
+      return unwrap(
+        await supabase
+          .from(table.collectionRuns)
+          .select('*')
+          .eq('card_id', cardId)
+          .eq('owner_id', ownerId)
+          .order('created_at', { ascending: false })
+      );
     },
 
     async createRun(payload) {
-      return unwrap(await supabase.from('collection_runs').insert(payload).select('*').single());
+      return unwrap(await supabase.from(table.collectionRuns).insert(payload).select('*').single());
     },
 
     async updateRun(runId, updates) {
-      return unwrap(await supabase.from('collection_runs').update(updates).eq('id', runId).select('*').maybeSingle());
+      return unwrap(await supabase.from(table.collectionRuns).update(updates).eq('id', runId).select('*').maybeSingle());
     },
 
     async getRunById(runId, ownerId) {
-      return unwrap(await supabase.from('collection_runs').select('*').eq('id', runId).eq('owner_id', ownerId).maybeSingle());
+      return unwrap(await supabase.from(table.collectionRuns).select('*').eq('id', runId).eq('owner_id', ownerId).maybeSingle());
     },
 
     async getActiveRunForCard(cardId) {
-      return unwrap(await supabase.from('collection_runs').select('*').eq('card_id', cardId).eq('status', 'running').limit(1).maybeSingle());
+      return unwrap(
+        await supabase.from(table.collectionRuns).select('*').eq('card_id', cardId).eq('status', 'running').limit(1).maybeSingle()
+      );
     },
 
     async listDueCards(atIso) {
       return unwrap(
         await supabase
-          .from('cards')
+          .from(table.cards)
           .select('*')
           .eq('active', true)
           .eq('schedule_enabled', true)
@@ -65,7 +81,7 @@ export function createSupabaseRepository({ supabaseUrl, serviceRoleKey }) {
     },
 
     async createCollectedData(payload) {
-      return unwrap(await supabase.from('collected_data').insert(payload).select('*').single());
+      return unwrap(await supabase.from(table.collectedData).insert(payload).select('*').single());
     }
   };
 }

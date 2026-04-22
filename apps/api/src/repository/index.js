@@ -15,3 +15,11 @@ export function getRepository() {
   }
   return repository;
 }
+
+export function setRepositoryForTests(nextRepository) {
+  repository = nextRepository;
+}
+
+export function resetRepositoryForTests() {
+  repository = undefined;
+}

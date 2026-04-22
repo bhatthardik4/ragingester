@@ -1,16 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
-const store = {
-  cards: new Map(),
-  runs: new Map(),
-  collectedData: new Map()
-};
-
 function sortDescByDate(items, key) {
   return [...items].sort((a, b) => new Date(b[key] || 0) - new Date(a[key] || 0));
 }
 
 export function createMemoryRepository() {
+  const store = {
+    cards: new Map(),
+    runs: new Map(),
+    collectedData: new Map()
+  };
+
   return {
     async listCards(ownerId) {
       return [...store.cards.values()].filter((c) => c.owner_id === ownerId);

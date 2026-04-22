@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SOURCE_TYPES } from '@ragingester/shared';
 
 const presets = [
@@ -11,6 +11,7 @@ const sourceOptions = Object.values(SOURCE_TYPES);
 
 const initialForm = {
   source_type: SOURCE_TYPES.HTTP_API,
+  job_name: '',
   source_input: '',
   params: '{}',
   schedule_enabled: false,
@@ -19,9 +20,32 @@ const initialForm = {
   active: true
 };
 
-export function CardForm({ onSubmit, loading }) {
-  const [form, setForm] = useState(initialForm);
+function formFromCard(card) {
+  if (!card) return initialForm;
+  const params = { ...(card.params || {}) };
+  const jobName = params.job_name || '';
+  delete params.job_name;
+
+  return {
+    source_type: card.source_type || SOURCE_TYPES.HTTP_API,
+    job_name: jobName,
+    source_input: card.source_input || '',
+    params: JSON.stringify(params, null, 2),
+    schedule_enabled: Boolean(card.schedule_enabled),
+    cron_expression: card.cron_expression || '0 9 * * *',
+    timezone: card.timezone || 'America/Chicago',
+    active: Boolean(card.active)
+  };
+}
+
+export function CardForm({ onSubmit, loading, mode = 'create', initialCard = null, onCancel }) {
+  const [form, setForm] = useState(() => formFromCard(initialCard));
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setForm(formFromCard(initialCard));
+    setError('');
+  }, [initialCard, mode]);
 
   const parsedParams = useMemo(() => {
     try {
@@ -44,13 +68,18 @@ export function CardForm({ onSubmit, loading }) {
       await onSubmit({
         source_type: form.source_type,
         source_input: form.source_input,
-        params: parsedParams,
+        params: {
+          ...parsedParams,
+          ...(form.job_name ? { job_name: form.job_name } : {})
+        },
         schedule_enabled: form.schedule_enabled,
         cron_expression: form.schedule_enabled ? form.cron_expression : null,
         timezone: form.timezone,
         active: form.active
       });
-      setForm(initialForm);
+      if (mode === 'create') {
+        setForm(initialForm);
+      }
     } catch (submitError) {
       setError(submitError.message);
     }
@@ -58,7 +87,7 @@ export function CardForm({ onSubmit, loading }) {
 
   return (
     <div className="panel">
-      <h2>Create Card</h2>
+      <h2>{mode === 'edit' ? 'Edit Card' : 'Create Card'}</h2>
       <form onSubmit={submit}>
         <label>Source type</label>
         <select value={form.source_type} onChange={(e) => setForm((f) => ({ ...f, source_type: e.target.value }))}>
@@ -66,6 +95,13 @@ export function CardForm({ onSubmit, loading }) {
             <option key={option} value={option}>{option}</option>
           ))}
         </select>
+
+        <label>Job name</label>
+        <input
+          value={form.job_name}
+          onChange={(e) => setForm((f) => ({ ...f, job_name: e.target.value }))}
+          placeholder="Daily pricing sync"
+        />
 
         <label>Source URL / Identifier</label>
         <input value={form.source_input} onChange={(e) => setForm((f) => ({ ...f, source_input: e.target.value }))} required />
@@ -110,7 +146,16 @@ export function CardForm({ onSubmit, loading }) {
         )}
 
         {error && <div className="meta">Error: {error}</div>}
-        <button disabled={loading} type="submit">{loading ? 'Saving...' : 'Create Card'}</button>
+        <div className="row">
+          <button disabled={loading} type="submit">
+            {loading ? 'Saving...' : mode === 'edit' ? 'Save Changes' : 'Create Card'}
+          </button>
+          {mode === 'edit' && (
+            <button className="secondary" disabled={loading} type="button" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );
