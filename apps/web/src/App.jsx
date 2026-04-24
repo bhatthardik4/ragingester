@@ -137,15 +137,17 @@ export function App() {
         />
       )}
       <CardFilters filters={filters} onChange={setFilters} />
-      <CardList
-        cards={filteredCards}
-        onRun={handleRun}
-        onDelete={handleDelete}
-        onSelect={handleSelect}
-        onEdit={setEditingCard}
-        selectedId={selectedCardId}
-      />
-      <RunList runs={runs} preview={preview} />
+      <div className="content-grid">
+        <CardList
+          cards={filteredCards}
+          onRun={handleRun}
+          onDelete={handleDelete}
+          onSelect={handleSelect}
+          onEdit={setEditingCard}
+          selectedId={selectedCardId}
+        />
+        <RunList runs={runs} preview={preview} />
+      </div>
     </div>
   );
 }

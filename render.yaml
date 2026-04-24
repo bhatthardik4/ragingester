@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: ragingester
+    runtime: node
+    plan: starter
+    rootDir: .
+    buildCommand: npm ci && npm run build -w @ragingester/web
+    startCommand: node apps/api/src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGIN
+        value: https://ragingester.onrender.com
+      - key: DEFAULT_TIMEZONE
+        value: America/Chicago
+      - key: DEV_USER_ID
+        value: dev-user-1
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: RUN_TIMEOUT_MS
+        value: 30000
+      - key: RUN_MAX_RETRIES
+        value: 1
+      - key: SCHEDULER_POLL_MS
+        value: 15000
