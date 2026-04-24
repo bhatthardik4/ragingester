@@ -1,12 +1,47 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from './api.js';
+import { supabase, isSupabaseConfigured } from './supabase.js';
 import { CardForm } from './components/CardForm.jsx';
 import { CardList } from './components/CardList.jsx';
 import { CardFilters } from './components/CardFilters.jsx';
 import { RunList } from './components/RunList.jsx';
 
-export function App() {
-  const [auth, setAuth] = useState({ token: '', userId: 'dev-user-1' });
+function AuthBarrier({ error }) {
+  async function signInWithGoogle() {
+    if (!supabase) return;
+    const redirectTo = window.location.origin;
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo }
+    });
+    if (oauthError) {
+      // eslint-disable-next-line no-console
+      console.error(oauthError);
+    }
+  }
+
+  return (
+    <div className="container">
+      <div className="panel">
+        <h1>Ragingester</h1>
+        <div className="meta">Sign in with Google to access card management.</div>
+        {!isSupabaseConfigured && (
+          <div className="meta" style={{ marginTop: 12 }}>
+            Missing `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY`.
+          </div>
+        )}
+        {error && <div className="meta" style={{ marginTop: 12 }}>Error: {error}</div>}
+        <div className="row" style={{ marginTop: 12 }}>
+          <button type="button" onClick={signInWithGoogle} disabled={!isSupabaseConfigured}>
+            Continue with Google
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CardsWorkspace({ auth, userEmail, onSignOut }) {
   const [cards, setCards] = useState([]);
   const [runs, setRuns] = useState([]);
   const [preview, setPreview] = useState(null);
@@ -33,7 +68,7 @@ export function App() {
 
   useEffect(() => {
     refreshCards().catch((err) => setError(err.message));
-  }, []);
+  }, [auth.token]);
 
   async function handleCreate(payload) {
     setLoading(true);
@@ -113,15 +148,9 @@ export function App() {
       <div className="panel">
         <h1>Ragingester</h1>
         <div className="meta">Card-based data collection with per-source cron schedules</div>
-        <div className="grid-2" style={{ marginTop: 12 }}>
-          <div>
-            <label>Bearer token (optional)</label>
-            <input value={auth.token} onChange={(e) => setAuth((a) => ({ ...a, token: e.target.value }))} />
-          </div>
-          <div>
-            <label>Fallback user id</label>
-            <input value={auth.userId} onChange={(e) => setAuth((a) => ({ ...a, userId: e.target.value }))} />
-          </div>
+        <div className="row" style={{ marginTop: 12, justifyContent: 'space-between' }}>
+          <div className="meta">Signed in as: {userEmail || auth.userId}</div>
+          <button className="secondary" type="button" onClick={onSignOut}>Sign out</button>
         </div>
         {error && <div className="meta" style={{ marginTop: 8 }}>Error: {error}</div>}
       </div>
@@ -150,4 +179,82 @@ export function App() {
       </div>
     </div>
   );
+}
+
+export function App() {
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [auth, setAuth] = useState({ token: '', userId: '' });
+  const [userEmail, setUserEmail] = useState('');
+
+  useEffect(() => {
+    if (!supabase) {
+      setAuthLoading(false);
+      return;
+    }
+
+    let mounted = true;
+
+    async function init() {
+      const { data, error } = await supabase.auth.getSession();
+      if (!mounted) return;
+      if (error) {
+        setAuthError(error.message);
+        setAuthLoading(false);
+        return;
+      }
+
+      const session = data.session;
+      if (session) {
+        setAuth({ token: session.access_token, userId: session.user?.id || '' });
+        setUserEmail(session.user?.email || '');
+      }
+      setAuthLoading(false);
+    }
+
+    init().catch((error) => {
+      if (mounted) {
+        setAuthError(error instanceof Error ? error.message : String(error));
+        setAuthLoading(false);
+      }
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      if (session) {
+        setAuth({ token: session.access_token, userId: session.user?.id || '' });
+        setUserEmail(session.user?.email || '');
+      } else {
+        setAuth({ token: '', userId: '' });
+        setUserEmail('');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function signOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+  }
+
+  if (authLoading) {
+    return (
+      <div className="container">
+        <div className="panel">
+          <h1>Ragingester</h1>
+          <div className="meta">Loading authentication...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!auth.token) {
+    return <AuthBarrier error={authError} />;
+  }
+
+  return <CardsWorkspace auth={auth} userEmail={userEmail} onSignOut={signOut} />;
 }
