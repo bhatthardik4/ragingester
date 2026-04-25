@@ -5,6 +5,7 @@ import { CardForm } from './components/CardForm.jsx';
 import { CardList } from './components/CardList.jsx';
 import { CardFilters } from './components/CardFilters.jsx';
 import { RunList } from './components/RunList.jsx';
+import { Toast } from './components/Toast.jsx';
 
 function AuthBarrier({ error }) {
   async function signInWithGoogle() {
@@ -49,6 +50,7 @@ function CardsWorkspace({ auth, userEmail, onSignOut }) {
   const [editingCard, setEditingCard] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
   const [filters, setFilters] = useState({ jobType: 'all', jobName: '' });
 
   async function refreshCards() {
@@ -75,6 +77,7 @@ function CardsWorkspace({ auth, userEmail, onSignOut }) {
     try {
       await api.createCard(auth, payload);
       await refreshCards();
+      setToast('Card created successfully!');
     } finally {
       setLoading(false);
     }
@@ -177,6 +180,7 @@ function CardsWorkspace({ auth, userEmail, onSignOut }) {
         />
         <RunList runs={runs} preview={preview} />
       </div>
+      <Toast message={toast} onHide={() => setToast('')} />
     </div>
   );
 }
