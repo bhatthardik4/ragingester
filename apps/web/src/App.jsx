@@ -10,7 +10,8 @@ import { Toast } from './components/Toast.jsx';
 function AuthBarrier({ error }) {
   async function signInWithGoogle() {
     if (!supabase) return;
-    const redirectTo = window.location.origin;
+    const configuredRedirect = import.meta.env.VITE_SUPABASE_REDIRECT_URL;
+    const redirectTo = configuredRedirect || window.location.origin;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo }
