@@ -8,7 +8,7 @@ export function CardFilters({ filters, onChange }) {
     <div className="panel">
       <h2>Filter Jobs</h2>
       <div className="grid-2">
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <label>Job type</label>
           <select value={filters.jobType} onChange={(e) => onChange({ ...filters, jobType: e.target.value })}>
             <option value="all">All</option>
@@ -17,7 +17,7 @@ export function CardFilters({ filters, onChange }) {
             ))}
           </select>
         </div>
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <label>Job name</label>
           <input
             value={filters.jobName}
