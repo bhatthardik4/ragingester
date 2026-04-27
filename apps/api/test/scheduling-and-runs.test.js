@@ -196,6 +196,10 @@ test('manual run succeeds for identifier-based card and can be fetched by owner 
     assert.equal(run.status, 'success');
     assert.equal(run.trigger_mode, 'manual');
     assert.equal(run.attempts, 1);
+    assert.equal(run.error_payload, null);
+    assert.ok(Array.isArray(run.logs));
+    assert.ok(run.logs.some((entry) => entry.event === 'attempt_started'));
+    assert.ok(run.logs.some((entry) => entry.event === 'run_completed'));
 
     const getRunResponse = await fetch(`${baseUrl}/runs/${run.id}`, {
       headers: authHeaders('user-a')
@@ -241,6 +245,12 @@ test('manual run uses per-card run_max_retries override', async () => {
     const run = await runResponse.json();
     assert.equal(run.status, 'failed');
     assert.equal(run.attempts, 3);
+    assert.equal(run.trigger_mode, 'manual');
+    assert.ok(run.error_payload);
+    assert.equal(run.error_payload.name, 'TypeError');
+    assert.ok(Array.isArray(run.logs));
+    assert.equal(run.logs.filter((entry) => entry.event === 'attempt_started').length, 3);
+    assert.equal(run.logs.filter((entry) => entry.event === 'attempt_failed').length, 3);
   });
 
   resetRepositoryForTests();
@@ -274,6 +284,9 @@ test('manual run falls back to global retry default when card override is null',
     const run = await runResponse.json();
     assert.equal(run.status, 'failed');
     assert.equal(run.attempts, config.runMaxRetries + 1);
+    assert.ok(run.error_payload);
+    assert.equal(run.error_payload.name, 'TypeError');
+    assert.ok(Array.isArray(run.logs));
   });
 
   resetRepositoryForTests();
@@ -318,6 +331,10 @@ test('manual run uses per-card run_timeout_ms override', async () => {
     assert.equal(run.status, 'failed');
     assert.equal(run.attempts, 1);
     assert.match(run.error, /run timed out after 10ms/);
+    assert.ok(run.error_payload);
+    assert.equal(run.error_payload.message, 'run timed out after 10ms');
+    assert.ok(Array.isArray(run.logs));
+    assert.ok(run.logs.some((entry) => entry.event === 'attempt_failed'));
   } finally {
     global.fetch = originalFetch;
   }

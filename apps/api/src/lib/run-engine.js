@@ -21,11 +21,27 @@ function resolveRunPolicy(card, { defaultTimeoutMs, defaultMaxRetries }) {
   };
 }
 
+function serializeError(error) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      ...(error.code ? { code: String(error.code) } : {})
+    };
+  }
+
+  return {
+    name: 'Error',
+    message: String(error)
+  };
+}
+
 export async function executeRun({ repository, card, triggerMode, timeoutMs, maxRetries }) {
   const { effectiveTimeoutMs, effectiveMaxRetries } = resolveRunPolicy(card, {
     defaultTimeoutMs: timeoutMs,
     defaultMaxRetries: maxRetries
   });
+  const logs = [];
 
   const run = await repository.createRun({
     card_id: card.id,
@@ -36,16 +52,27 @@ export async function executeRun({ repository, card, triggerMode, timeoutMs, max
     started_at: null,
     ended_at: null,
     error: null,
+    error_payload: null,
     logs: []
   });
 
   let attempts = 0;
   while (attempts <= effectiveMaxRetries) {
     attempts += 1;
+    logs.push({
+      level: 'info',
+      event: 'attempt_started',
+      attempt: attempts,
+      trigger_mode: triggerMode || TRIGGER_MODE.MANUAL,
+      timeout_ms: effectiveTimeoutMs,
+      max_retries: effectiveMaxRetries
+    });
+
     await repository.updateRun(run.id, {
       status: RUN_STATUS.RUNNING,
       attempts,
-      started_at: new Date().toISOString()
+      started_at: new Date().toISOString(),
+      logs
     });
 
     try {
@@ -67,7 +94,8 @@ export async function executeRun({ repository, card, triggerMode, timeoutMs, max
         status: RUN_STATUS.SUCCESS,
         ended_at: new Date().toISOString(),
         error: null,
-        logs: [{ level: 'info', message: 'run completed' }]
+        error_payload: null,
+        logs: [...logs, { level: 'info', event: 'run_completed', message: 'run completed', attempt: attempts }]
       };
       await repository.updateRun(run.id, updates);
 
@@ -82,11 +110,20 @@ export async function executeRun({ repository, card, triggerMode, timeoutMs, max
 
       return repository.getRunById(run.id, card.owner_id);
     } catch (error) {
+      const errorPayload = serializeError(error);
+      logs.push({
+        level: 'error',
+        event: 'attempt_failed',
+        attempt: attempts,
+        error: errorPayload
+      });
+
       const failedState = {
         status: RUN_STATUS.FAILED,
         ended_at: new Date().toISOString(),
-        error: error instanceof Error ? error.message : String(error),
-        logs: [{ level: 'error', message: error instanceof Error ? error.message : String(error) }]
+        error: errorPayload.message,
+        error_payload: errorPayload,
+        logs
       };
       await repository.updateRun(run.id, failedState);
 

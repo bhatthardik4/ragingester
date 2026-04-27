@@ -81,7 +81,8 @@ test('supabase migration applies in isolated schema and cleans up', { skip: skip
     const migrationPaths = [
       new URL('../../../supabase/migrations/20260422_001_init_cards_runs.sql', import.meta.url),
       new URL('../../../supabase/migrations/20260426_001_enforce_one_active_run_per_card.sql', import.meta.url),
-      new URL('../../../supabase/migrations/20260426_002_per_card_run_policy.sql', import.meta.url)
+      new URL('../../../supabase/migrations/20260426_002_per_card_run_policy.sql', import.meta.url),
+      new URL('../../../supabase/migrations/20260426_003_run_error_payload.sql', import.meta.url)
     ];
 
     for (const migrationPath of migrationPaths) {
@@ -144,6 +145,7 @@ test('cards CRUD API works against supabase temporary tables and cleans up', { s
         started_at timestamptz,
         ended_at timestamptz,
         error text,
+        error_payload jsonb,
         logs jsonb not null default '[]'::jsonb,
         created_at timestamptz not null default now()
       )

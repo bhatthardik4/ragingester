@@ -18,6 +18,11 @@ export function createSupabaseRepository({ supabaseUrl, serviceRoleKey, tables =
     return result.data;
   }
 
+  function isMissingErrorPayloadColumn(error) {
+    const message = String(error?.message || '');
+    return message.includes('error_payload') && message.includes('schema cache');
+  }
+
   return {
     async listCards(ownerId) {
       return unwrap(await supabase.from(table.cards).select('*').eq('owner_id', ownerId).order('created_at', { ascending: false }));
@@ -64,7 +69,12 @@ export function createSupabaseRepository({ supabaseUrl, serviceRoleKey, tables =
     },
 
     async updateRun(runId, updates) {
-      return unwrap(await supabase.from(table.collectionRuns).update(updates).eq('id', runId).select('*').maybeSingle());
+      const result = await supabase.from(table.collectionRuns).update(updates).eq('id', runId).select('*').maybeSingle();
+      if (result.error && updates.error_payload !== undefined && isMissingErrorPayloadColumn(result.error)) {
+        const { error_payload: _drop, ...fallbackUpdates } = updates;
+        return unwrap(await supabase.from(table.collectionRuns).update(fallbackUpdates).eq('id', runId).select('*').maybeSingle());
+      }
+      return unwrap(result);
     },
 
     async getRunById(runId, ownerId) {

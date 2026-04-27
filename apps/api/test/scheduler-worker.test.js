@@ -36,6 +36,10 @@ test('scheduler tick executes due cards and recomputes next_run_at', async () =>
   assert.equal(runs.length, 1);
   assert.equal(runs[0].trigger_mode, 'scheduled');
   assert.equal(runs[0].status, 'success');
+  assert.equal(runs[0].error_payload, null);
+  assert.ok(Array.isArray(runs[0].logs));
+  assert.ok(runs[0].logs.some((entry) => entry.event === 'attempt_started'));
+  assert.ok(runs[0].logs.some((entry) => entry.event === 'run_completed'));
 
   const updatedCard = await repository.getCardById(card.id, 'user-a');
   assert.ok(updatedCard.last_run_at);
@@ -111,6 +115,12 @@ test('scheduler tick uses per-card run_max_retries override', async () => {
   assert.equal(runs.length, 1);
   assert.equal(runs[0].status, 'failed');
   assert.equal(runs[0].attempts, 3);
+  assert.equal(runs[0].trigger_mode, 'scheduled');
+  assert.ok(runs[0].error_payload);
+  assert.equal(runs[0].error_payload.name, 'TypeError');
+  assert.ok(Array.isArray(runs[0].logs));
+  assert.equal(runs[0].logs.filter((entry) => entry.event === 'attempt_started').length, 3);
+  assert.equal(runs[0].logs.filter((entry) => entry.event === 'attempt_failed').length, 3);
 });
 
 test('scheduler tick falls back to global retries when per-card override is null', async () => {
@@ -145,4 +155,7 @@ test('scheduler tick falls back to global retries when per-card override is null
   assert.equal(runs.length, 1);
   assert.equal(runs[0].status, 'failed');
   assert.equal(runs[0].attempts, config.runMaxRetries + 1);
+  assert.ok(runs[0].error_payload);
+  assert.equal(runs[0].error_payload.name, 'TypeError');
+  assert.ok(Array.isArray(runs[0].logs));
 });
