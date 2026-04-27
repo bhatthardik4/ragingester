@@ -52,6 +52,24 @@ async function refreshPostgrestSchema(client) {
   await new Promise((resolve) => setTimeout(resolve, 800));
 }
 
+async function waitForRepositoryReady(repository, { timeoutMs = 10000, intervalMs = 250 } = {}) {
+  const start = Date.now();
+  let lastError;
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      await repository.listCards('readiness-check-user');
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
+  const message = lastError instanceof Error ? lastError.message : String(lastError || 'unknown readiness error');
+  throw new Error(`supabase repository was not ready after ${timeoutMs}ms: ${message}`);
+}
+
 test('supabase migration applies in isolated schema and cleans up', { skip: skipReason }, async () => {
   const schema = safeName('migration_test');
   const client = makePgClient();
@@ -137,17 +155,19 @@ test('cards CRUD API works against supabase temporary tables and cleans up', { s
     `);
     await refreshPostgrestSchema(client);
 
-    setRepositoryForTests(
-      createSupabaseRepository({
-        supabaseUrl,
-        serviceRoleKey: supabaseServiceRoleKey,
-        tables: {
-          cards: cardsTable,
-          collectionRuns: runsTable,
-          collectedData: dataTable
-        }
-      })
-    );
+    const repository = createSupabaseRepository({
+      supabaseUrl,
+      serviceRoleKey: supabaseServiceRoleKey,
+      tables: {
+        cards: cardsTable,
+        collectionRuns: runsTable,
+        collectedData: dataTable
+      }
+    });
+
+    // CI can be slower to refresh PostgREST schema cache after temporary table creation.
+    await waitForRepositoryReady(repository);
+    setRepositoryForTests(repository);
 
     await withServer(async (baseUrl) => {
       const createResponse = await fetch(`${baseUrl}/cards`, {
